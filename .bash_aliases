@@ -1,7 +1,8 @@
 # Clear Docker
-function restart_docker(){
+function clear_docker(){
   docker_containers=$(docker ps -aq)
   docker_volumes=$(docker volume ls -q)
+  docker_networks=$(docker network ls | awk 'NR > 1 {($2 != "bridge" || $2 != "none" || $2 != "host") print $1}')
 
   if [ "$docker_containers" != "" ]; then
     docker rm $docker_containers
@@ -14,38 +15,61 @@ function restart_docker(){
     echo "Volumes cleaned."
   else echo "No volumes."
   fi
+
+  if [ "$docker_networks" != "" ]; then
+    docker network rm $docker_networks
+    echo "Networks cleaned."
+  else echo "No networks."
+  fi
 }
 
 # Git shortcuts
 function push_it(){
-  if [ "$1" != "" ]; then
 
-    if [ "$1" == "all" ] && [ "$2" != "" ]; then
-      echo "Commiting and pushing all changes..."
-      git add .
-      commit_message=$2
-    else
-      commit_message=$1
+  usage="Usage: push_it [all] \"commit message\" [remote] [branch]."
+
+  if [ "$1" == "" ]; then
+    echo $usage
+    return
+  fi
+
+  if [ "$1" == "all" ]; then
+    if [ "$2" == "" ]; then
+      echo "Commit message not provided."
+      return
     fi
 
-    git commit -m "$commit_message"
+    commit_echo_message="Commiting all changes..."
+    commit_message=$2
+    all=1
+    remote=$3
+    branch=$4
 
-    if [ "$1" == "all" ]; then
-      remote="$3"
-      branch="$4"
-    else
-      remote="$2"
-      branch="$3"
-    fi
-
-    if [ $remote == "" ] && [ $branch == ""]; then
-      echo "Trying to push to a tracked remote branch..."
-      git push
-    elif [ $remote != "" ] && [ $branch != "" ]; then
-      echo "Trying to push to remote \"$remote\", branch \"$branch\"..."
-      git push $remote $branch
-    fi
   else
-    echo "Usage: push_it [all] \"commit message\" [remote] [branch]."
+    commit_echo_message="Commiting changes in the index..."
+    commit_message=$1
+    all=0
+    remote=$2
+    branch=$3
+
+  fi
+
+  if [ "$remote" == "" ] && [ "$branch" == ""]; then
+    echo $commit_echo_message
+    if [ $all -eq 1 ]; then
+      git add .
+    fi
+    git commit -m "$commit_message"
+    echo "Trying to push to a tracked remote branch..."
+    git push
+
+  elif [ "$remote" != "" ] && [ "$branch" != "" ]; then
+    echo $commit_echo_message
+    git commit -m "$commit_message"
+    echo "Trying to push to remote \"$remote\", branch \"$branch\"..."
+    git push $remote $branch
+
+  else
+    echo $usage
   fi
 }
