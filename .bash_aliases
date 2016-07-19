@@ -3,6 +3,7 @@ function clear_docker(){
   docker_containers=$(docker ps -aq)
   docker_volumes=$(docker volume ls -q)
   docker_networks=$(docker network ls | awk 'NR > 1 { print $1 " " $2 }' | grep -v 'bridge\|host\|none' | awk '{print $1}')
+  docker_images=$(docker images -q)
 
   if [ "$docker_containers" != "" ]; then
     docker rm $docker_containers
@@ -20,6 +21,12 @@ function clear_docker(){
     docker network rm $docker_networks
     echo "Networks cleaned."
   else echo "No networks."
+  fi
+
+  if [ "$docker_images" != "" ]; then
+    docker rmi -f $docker_images
+    echo "Images cleaned."
+  else echo "No images."
   fi
 }
 
